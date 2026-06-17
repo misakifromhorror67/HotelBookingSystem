@@ -1,0 +1,111 @@
+# Модуль управления бронями
+from modules.database import get_records, add_record, update_record
+from datetime import datetime
+
+def calculate_price(room_id, check_in, check_out):
+    """Расчёт стоимости проживания"""
+    from modules.rooms import get_all_rooms
+    
+    rooms = get_all_rooms()
+    price = 0
+    for room in rooms:
+        if room[0] == room_id:
+            price = room[4]  # PricePerNight
+            break
+    
+    # Количество ночей
+    from datetime import datetime
+    check_in_date = datetime.strptime(check_in, "%Y-%m-%d")
+    check_out_date = datetime.strptime(check_out, "%Y-%m-%d")
+    nights = (check_out_date - check_in_date).days
+    
+    if nights <= 0:
+        return None
+    
+    return price * nights
+
+def create_booking(room_id, guest_fio, guest_phone, guest_email, check_in, check_out, user_id):
+    """Создание брони"""
+    from modules.rooms import get_all_rooms
+    
+    # Проверка дат
+    from datetime import datetime
+    check_in_date = datetime.strptime(check_in, "%Y-%m-%d")
+    check_out_date = datetime.strptime(check_out, "%Y-%m-%d")
+    
+    if check_out_date <= check_in_date:
+        return {"success": False, "message": "Дата выезда должна быть позже даты заезда"}
+    
+    # Проверка свободен ли номер
+    rooms = get_all_rooms()
+    room_status = None
+    for room in rooms:
+        if room[0] == room_id:
+            room_status = room[5]
+            break
+    
+    if room_status != "свободен":
+        return {"success": False, "message": "Номер занят"}
+    
+    # Расчёт стоимости
+    total_price = calculate_price(room_id, check_in, check_out)
+    if total_price is None:
+        return {"success": False, "message": "Некорректные даты"}
+    
+    # Поиск или создание гостя
+    guests = get_records("Guests", f"Phone = '{guest_phone}'")
+    if guests:
+        guest_id = guests[0][0]
+    else:
+        guest_id = add_record("Guests", {
+            "FIO": guest_fio,
+            "Passport": "",
+            "Phone": guest_phone,
+            "Email": guest_email
+        })
+    
+    # Создание брони
+    booking_id = add_record("Bookings", {
+        "RoomID": room_id,
+        "GuestID": guest_id,
+        "UserID": user_id,
+        "CheckInDate": check_in,
+        "CheckOutDate": check_out,
+        "Status": "активна",
+        "TotalPrice": total_price
+    })
+    
+    # Обновление статуса номера
+    update_record("Rooms", {"Status": "занят"}, f"RoomID = {room_id}")
+    
+    return {
+        "success": True,
+        "booking_id": booking_id,
+        "total_price": total_price,
+        "message": f"Бронь создана. Стоимость: {total_price} руб."
+    }
+
+def cancel_booking(booking_id):
+    """Отмена брони"""
+    bookings = get_records("Bookings", f"BookingID = {booking_id}")
+    if not bookings:
+        return {"success": False, "message": "Бронь не найдена"}
+    
+    booking = bookings[0]
+    room_id = booking[1]
+    
+    # Обновление статуса брони
+    update_record("Bookings", {"Status": "отменена"}, f"BookingID = {booking_id}")
+    
+    # Освобождение номера
+    update_record("Rooms", {"Status": "свободен"}, f"RoomID = {room_id}")
+    
+    return {"success": True, "message": "Бронь отменена"}
+
+def get_active_bookings():
+    """Получение активных броней"""
+    return get_records("Bookings", "Status = 'активна'")
+
+def get_bookings_by_user(user_id):
+    """Получение броней пользователя"""
+    return get_records("Bookings", f"UserID = {user_id}")

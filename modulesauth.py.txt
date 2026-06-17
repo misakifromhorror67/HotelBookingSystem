@@ -1,0 +1,68 @@
+# Модуль авторизации
+import hashlib
+from modules.database import get_records, add_record
+from config.config import ADMIN_LOGIN, ADMIN_PASSWORD, ADMIN_FIO, ADMIN_EMAIL, ADMIN_PHONE
+
+def hash_password(password):
+    """Хеширование пароля"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_admin_if_not_exists():
+    """Создание администратора при первом запуске"""
+    users = get_records("Users", "Login = 'admin'")
+    if not users:
+        add_record("Users", {
+            "Login": ADMIN_LOGIN,
+            "Password": hash_password(ADMIN_PASSWORD),
+            "Role": "admin",
+            "FIO": ADMIN_FIO,
+            "Email": ADMIN_EMAIL,
+            "Phone": ADMIN_PHONE
+        })
+        print("✅ Администратор создан (логин: admin, пароль: 12345)")
+
+def login(login, password):
+    """Аутентификация пользователя"""
+    hashed = hash_password(password)
+    users = get_records("Users", f"Login = '{login}' AND Password = '{hashed}'")
+    
+    if users:
+        user = users[0]
+        return {
+            "success": True,
+            "user_id": user[0],
+            "login": user[1],
+            "role": user[3],
+            "fio": user[4]
+        }
+    else:
+        return {
+            "success": False,
+            "message": "Неверный логин или пароль"
+        }
+
+def register(login, password, fio, email, phone):
+    """Регистрация нового пользователя (роль = client)"""
+    # Проверка на существование
+    existing = get_records("Users", f"Login = '{login}'")
+    if existing:
+        return {"success": False, "message": "Пользователь с таким логином уже существует"}
+    
+    # Добавление
+    user_id = add_record("Users", {
+        "Login": login,
+        "Password": hash_password(password),
+        "Role": "client",
+        "FIO": fio,
+        "Email": email,
+        "Phone": phone
+    })
+    
+    return {"success": True, "user_id": user_id, "message": "Регистрация успешна"}
+
+def check_role(login):
+    """Проверка роли пользователя"""
+    users = get_records("Users", f"Login = '{login}'")
+    if users:
+        return users[0][3]  # Role
+    return None

@@ -1,0 +1,10 @@
+# Конфигурация системы
+
+DB_NAME = "database/hotel.db"
+
+# Тестовые данные для администратора
+ADMIN_LOGIN = "admin"
+ADMIN_PASSWORD = "12345"
+ADMIN_FIO = "Администратор системы"
+ADMIN_EMAIL = "admin@hotel.ru"
+ADMIN_PHONE = "+7-999-999-99-99"

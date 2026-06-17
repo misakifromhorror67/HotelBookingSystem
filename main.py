@@ -1,0 +1,296 @@
+# Главный модуль информационной системы
+import os
+import sys
+
+# Добавляем пути
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from modules.database import create_tables, get_records
+from modules.auth iport create_admin_if_not_exists, login, register, check_role
+from modules.rooms import get_all_rooms, get_free_rooms, add_room, edit_room, delete_room
+from modules.bookings import create_booking, cancel_booking, get_active_bookings, get_bookings_by_user
+from modules.reports import occupancy_report, revenue_report, export_to_excel, export_to_pdf
+
+def clear_screen():
+    """Очистка экрана"""
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def print_header(text):
+    """Печать заголовка"""
+    print("\n" + "=" * 50)
+    print(f"  {text}")
+    print("=" * 50)
+
+def main_menu():
+    """Главное меню"""
+    clear_screen()
+    print_header("ГОСТИНИЦА 'АТМОСФЕРА'")
+    print("1. Вход в систему")
+    print("2. Регистрация")
+    print("3. Выход")
+    print("-" * 50)
+    choice = input("Выберите действие (1-3): ")
+    return choice
+
+def user_menu(role, user_id):
+    """Меню пользователя после входа"""
+    clear_screen()
+    print_header(f"Добро пожаловать! (Роль: {role})")
+    print("1. Просмотр списка номеров")
+    print("2. Просмотр свободных номеров")
+    
+    if role == "admin":
+        print("3. Добавить номер (админ)")
+        print("4. Редактировать номер (админ)")
+        print("5. Удалить номер (админ)")
+        print("6. Отчёт по загрузке (админ)")
+        print("7. Отчёт по доходам (админ)")
+        print("8. Экспорт в Excel (админ)")
+        print("9. Экспорт в PDF (админ)")
+    else:
+        print("3. Забронировать номер")
+        print("4. Отменить бронь")
+        print("5. Мои брони")
+    
+    print("0. Выйти")
+    print("-" * 50)
+    choice = input("Выберите действие: ")
+    return choice, user_id
+
+def admin_add_room():
+    """Добавление номера"""
+    clear_screen()
+    print_header("ДОБАВЛЕНИЕ НОМЕРА")
+    room_number = input("Номер комнаты: ")
+    category = input("Категория (Стандарт/Люкс/Семейный): ")
+    capacity = int(input("Количество мест: "))
+    price = float(input("Цена за ночь (руб.): "))
+    
+    result = add_room(room_number, category, capacity, price)
+    print("\n" + result["message"])
+    input("\nНажмите Enter для продолжения...")
+
+def admin_edit_room():
+    """Редактирование номера"""
+    clear_screen()
+    print_header("РЕДАКТИРОВАНИЕ НОМЕРА")
+    rooms = get_all_rooms()
+    for room in rooms:
+        print(f"ID: {room[0]} | №{room[1]} | {room[2]} | {room[4]} руб. | {room[5]}")
+    
+    room_id = int(input("\nВведите ID номера для редактирования: "))
+    print("Поля: RoomNumber, Category, Capacity, PricePerNight, Status")
+    field = input("Введите название поля: ")
+    value = input("Введите новое значение: ")
+    
+    result = edit_room(room_id, field, value)
+    print(result["message"])
+    input("\nНажмите Enter для продолжения...")
+
+def admin_delete_room():
+    """Удаление номера"""
+    clear_screen()
+    print_header("УДАЛЕНИЕ НОМЕРА")
+    rooms = get_all_rooms()
+    for room in rooms:
+        print(f"ID: {room[0]} | №{room[1]} | {room[2]}")
+    
+    room_id = int(input("\nВведите ID номера для удаления: "))
+    confirm = input("Подтвердите удаление (да/нет): ")
+    if confirm.lower() == "да":
+        result = delete_room(room_id)
+        print(result["message"])
+    input("\nНажмите Enter для продолжения...")
+
+def client_booking(user_id):
+    """Создание брони"""
+    clear_screen()
+    print_header("БРОНИРОВАНИЕ НОМЕРА")
+    
+    # Показываем свободные номера
+    rooms = get_free_rooms()
+    if not rooms:
+        print("Свободных номеров нет!")
+        input("\nНажмите Enter для продолжения...")
+        return
+    
+    for room in rooms:
+        print(f"ID: {room[0]} | №{room[1]} | {room[2]} | {room[4]} руб.")
+    
+    room_id = int(input("\nВведите ID номера: "))
+    guest_fio = input("ФИО гостя: ")
+    guest_phone = input("Телефон: ")
+    guest_email = input("Email: ")
+    check_in = input("Дата заезда (ГГГГ-ММ-ДД): ")
+    check_out = input("Дата выезда (ГГГГ-ММ-ДД): ")
+    
+    result = create_booking(room_id, guest_fio, guest_phone, guest_email, check_in, check_out, user_id)
+    print("\n" + result["message"])
+    input("\nНажмите Enter для продолжения...")
+
+def client_cancel_booking():
+    """Отмена брони"""
+    clear_screen()
+    print_header("ОТМЕНА БРОНИ")
+    bookings = get_active_bookings()
+    if not bookings:
+        print("Активных броней нет!")
+        input("\nНажмите Enter для продолжения...")
+        return
+    
+    for booking in bookings:
+        print(f"ID: {booking[0]} | Номер: {booking[1]} | Стоимость: {booking[7]} руб.")
+    
+    booking_id = int(input("\nВведите ID брони для отмены: "))
+    result = cancel_booking(booking_id)
+    print(result["message"])
+    input("\nНажмите Enter для продолжения...")
+
+def client_my_bookings(user_id):
+    """Мои брони"""
+    clear_screen()
+    print_header("МОИ БРОНИ")
+    bookings = get_bookings_by_user(user_id)
+    if not bookings:
+        print("У вас нет броней")
+    else:
+        for booking in bookings:
+            print(f"ID: {booking[0]} | Статус: {booking[6]} | Сумма: {booking[7]} руб.")
+    input("\nНажмите Enter для продолжения...")
+
+def admin_occupancy_report():
+    """Отчёт по загрузке"""
+    clear_screen()
+    print(occupancy_report())
+    input("\nНажмите Enter для продолжения...")
+
+def admin_revenue_report():
+    """Отчёт по доходам"""
+    clear_screen()
+    print_header("ОТЧЁТ ПО ДОХОДАМ")
+    start = input("Начало периода (ГГГГ-ММ-ДД): ")
+    end = input("Конец периода (ГГГГ-ММ-ДД): ")
+    print(revenue_report(start, end))
+    input("\nНажмите Enter для продолжения...")
+
+def admin_export_excel():
+    """Экспорт в Excel"""
+    clear_screen()
+    print_header("ЭКСПОРТ В EXCEL")
+    rooms = get_all_rooms()
+    filename = input("Имя файла (например, report.xlsx): ")
+    if export_to_excel(rooms, filename):
+        print(f"✅ Отчёт экспортирован в {filename}")
+    else:
+        print("❌ Ошибка экспорта. Установите библиотеку: pip install openpyxl")
+    input("\nНажмите Enter для продолжения...")
+
+def admin_export_pdf():
+    """Экспорт в PDF"""
+    clear_screen()
+    print_header("ЭКСПОРТ В PDF")
+    rooms = get_all_rooms()
+    filename = input("Имя файла (например, report.pdf): ")
+    if export_to_pdf(rooms, filename):
+        print(f"✅ Отчёт экспортирован в {filename}")
+    else:
+        print("❌ Ошибка экспорта. Установите библиотеку: pip install reportlab")
+    input("\nНажмите Enter для продолжения...")
+
+def main():
+    """Основная функция"""
+    print("Инициализация системы...")
+    
+    # Создание таблиц
+    create_tables()
+    
+    # Создание администратора
+    create_admin_if_not_exists()
+    
+    while True:
+        choice = main_menu()
+        
+        if choice == "1":  # Вход
+            clear_screen()
+            print_header("ВХОД В СИСТЕМУ")
+            login_input = input("Логин: ")
+            password = input("Пароль: ")
+            
+            result = login(login_input, password)
+            if result["success"]:
+                print(f"\n✅ Добро пожаловать, {result['fio']}!")
+                role = result["role"]
+                user_id = result["user_id"]
+                
+                while True:
+                    user_choice, uid = user_menu(role, user_id)
+                    
+                    if user_choice == "0":
+                        break
+                    elif user_choice == "1":
+                        clear_screen()
+                        print_header("СПИСОК НОМЕРОВ")
+                        rooms = get_all_rooms()
+                        for room in rooms:
+                            print(f"№{room[1]} | {room[2]} | {room[4]} руб. | {room[5]}")
+                        input("\nНажмите Enter для продолжения...")
+                    elif user_choice == "2":
+                        clear_screen()
+                        print_header("СВОБОДНЫЕ НОМЕРА")
+                        rooms = get_free_rooms()
+                        if rooms:
+                            for room in rooms:
+                                print(f"№{room[1]} | {room[2]} | {room[4]} руб.")
+                        else:
+                            print("Свободных номеров нет")
+                        input("\nНажмите Enter для продолжения...")
+                    elif user_choice == "3" and role == "admin":
+                        admin_add_room()
+                    elif user_choice == "3" and role != "admin":
+                        client_booking(uid)
+                    elif user_choice == "4" and role == "admin":
+                        admin_edit_room()
+                    elif user_choice == "4" and role != "admin":
+                        client_cancel_booking()
+                    elif user_choice == "5" and role == "admin":
+                        admin_delete_room()
+                    elif user_choice == "5" and role != "admin":
+                        client_my_bookings(uid)
+                    elif user_choice == "6" and role == "admin":
+                        admin_occupancy_report()
+                    elif user_choice == "7" and role == "admin":
+                        admin_revenue_report()
+                    elif user_choice == "8" and role == "admin":
+                        admin_export_excel()
+                    elif user_choice == "9" and role == "admin":
+                        admin_export_pdf()
+                    else:
+                        print("Неверный выбор!")
+                        input("Нажмите Enter...")
+            else:
+                print(f"\n❌ {result['message']}")
+                input("\nНажмите Enter для продолжения...")
+        
+        elif choice == "2":  # Регистрация
+            clear_screen()
+            print_header("РЕГИСТРАЦИЯ")
+            login_input = input("Логин: ")
+            password = input("Пароль: ")
+            fio = input("ФИО: ")
+            email = input("Email: ")
+            phone = input("Телефон: ")
+            
+            result = register(login_input, password, fio, email, phone)
+            print(f"\n{result['message']}")
+            input("\nНажмите Enter для продолжения...")
+        
+        elif choice == "3":  # Выход
+            print("\nДо свидания!")
+            break
+        
+        else:
+            print("Неверный выбор!")
+            input("Нажмите Enter для продолжения...")
+
+if __name__ == "__main__":
+    main()

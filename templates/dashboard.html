@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Панель управления{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>📊 Панель управления</h2>
+        <p>Добро пожаловать, {{ user.fio }}!</p>
+        <hr>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <h5 class="card-title">🛏️ Номера</h5>
+                <p class="card-text">Просмотр и управление номерами</p>
+                <a href="{{ url_for('rooms') }}" class="btn btn-primary">Перейти</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <h5 class="card-title">📅 Бронирования</h5>
+                <p class="card-text">Просмотр и создание броней</p>
+                <a href="{{ url_for('bookings') }}" class="btn btn-success">Перейти</a>
+            </div>
+        </div>
+    </div>
+    {% if session.role == 'admin' %}
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <h5 class="card-title">📊 Отчёты</h5>
+                <p class="card-text">Статистика и аналитика</p>
+                <a href="{{ url_for('reports') }}" class="btn btn-info">Перейти</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if session.role == 'admin' %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                ⚙️ Администрирование
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('add_room_page') }}" class="btn btn-outline-primary me-2">➕ Добавить номер</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

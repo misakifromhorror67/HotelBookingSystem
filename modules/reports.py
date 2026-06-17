@@ -1,0 +1,105 @@
+# Модуль отчётов
+from modules.database import get_records, execute_query
+from datetime import datetime
+import os
+
+def occupancy_report():
+    """Отчёт по загрузке номеров"""
+    total_rooms = get_records("Rooms")
+    occupied = get_records("Rooms", "Status = 'занят'")
+    
+    result = []
+    result.append("=" * 50)
+    result.append("📊 ОТЧЁТ ПО ЗАГРУЗКЕ НОМЕРОВ")
+    result.append("=" * 50)
+    result.append(f"Всего номеров: {len(total_rooms)}")
+    result.append(f"Занято: {len(occupied)}")
+    result.append(f"Свободно: {len(total_rooms) - len(occupied)}")
+    result.append(f"Загрузка: {len(occupied) / len(total_rooms) * 100:.1f}%" if total_rooms else "0%")
+    result.append("-" * 50)
+    result.append("Детали по номерам:")
+    for room in total_rooms:
+        status = "🔴 Занят" if room[5] == "занят" else "🟢 Свободен"
+        result.append(f"  №{room[1]} | {room[2]} | {room[4]} руб. | {status}")
+    result.append("=" * 50)
+    
+    return "\n".join(result)
+
+def revenue_report(start_date, end_date):
+    """Отчёт по доходам за период"""
+    sql = '''
+        SELECT SUM(TotalPrice) 
+        FROM Bookings 
+        WHERE CreatedAt BETWEEN ? AND ?
+        AND Status = 'активна'
+    '''
+    result = execute_query(sql, (start_date, end_date))
+    total = result[0][0] if result and result[0][0] else 0
+    
+    report = []
+    report.append("=" * 50)
+    report.append(f"📊 ОТЧЁТ ПО ДОХОДАМ ЗА {start_date} - {end_date}")
+    report.append("=" * 50)
+    report.append(f"Общий доход: {total:.2f} руб.")
+    report.append("=" * 50)
+    
+    return "\n".join(report)
+
+def export_to_excel(data, filename):
+    """Экспорт в Excel"""
+    try:
+        from openpyxl import Workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Отчёт"
+        
+        # Заголовки
+        headers = ["Комната", "Категория", "Цена за ночь", "Статус"]
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        
+        # Данные
+        for row_idx, row in enumerate(data, 2):
+            for col_idx, value in enumerate(row[1:6], 1):
+                ws.cell(row=row_idx, column=col_idx, value=value)
+        
+        wb.save(filename)
+        return True
+    except Exception as e:
+        print(f"Ошибка экспорта в Excel: {e}")
+        return False
+
+def export_to_pdf(data, filename):
+    """Экспорт в PDF"""
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.units import inch
+        
+        c = canvas.Canvas(filename, pagesize=letter)
+        width, height = letter
+        
+        y = height - 50
+        c.setFont("Helvetica", 16)
+        c.drawString(50, y, "Отчёт по номерам гостиницы")
+        y -= 30
+        
+        c.setFont("Helvetica", 10)
+        c.drawString(50, y, "Комната  |  Категория  |  Цена  |  Статус")
+        y -= 20
+        c.line(50, y, width - 50, y)
+        y -= 15
+        
+        for room in data:
+            text = f"{room[1]:<8}  {room[2]:<12}  {room[4]:<7}  {room[5]}"
+            c.drawString(50, y, text)
+            y -= 15
+            if y < 50:
+                c.showPage()
+                y = height - 50
+        
+        c.save()
+        return True
+    except Exception as e:
+        print(f"Ошибка экспорта в PDF: {e}")
+        return False

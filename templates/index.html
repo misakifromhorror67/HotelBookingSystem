@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<div class="row align-items-center">
+    <div class="col-md-6">
+        <h1 class="display-4">🏨 Добро пожаловать в гостиницу "Атмосфера"</h1>
+        <p class="lead">Современная информационная система для бронирования номеров</p>
+        <hr class="my-4">
+        <p>Наша система позволяет:</p>
+        <ul>
+            <li>✅ Просматривать свободные номера</li>
+            <li>✅ Бронировать номера онлайн</li>
+            <li>✅ Управлять бронями</li>
+            <li>✅ Формировать отчёты (для администратора)</li>
+        </ul>
+        {% if 'user_id' not in session %}
+            <div class="d-grid gap-2 d-md-flex">
+                <a href="{{ url_for('login_page') }}" class="btn btn-primary btn-lg me-md-2">Войти</a>
+                <a href="{{ url_for('register_page') }}" class="btn btn-outline-secondary btn-lg">Зарегистрироваться</a>
+            </div>
+        {% else %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-success btn-lg">Перейти в панель</a>
+        {% endif %}
+    </div>
+    <div class="col-md-6">
+        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945" class="img-fluid rounded" alt="Гостиница">
+    </div>
+</div>
+{% endblock %}
